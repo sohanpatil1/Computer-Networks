@@ -7,7 +7,7 @@ from pathlib import Path
 import os
 import time
 
-f = open("output.html", "a")
+f = open("ecs152a.html", "a")
 def retrieveHTML(server_name,server_port, targetFileSize, file_size, clientSocket, request):
     clientSocket.send(request.encode('utf-8'))
 
@@ -23,11 +23,11 @@ def retrieveHTML(server_name,server_port, targetFileSize, file_size, clientSocke
         else:
             break
         
-        file_size = os.path.getsize('./output.html')
+        file_size = os.path.getsize('./ecs152a.html')
     print("The file size is : {}".format(file_size))
 
 def parseHTML():
-    with open("./output.html") as page:
+    with open("./ecs152a.html") as page:
         soup = BeautifulSoup(page, 'html.parser')
     imageList = []
 
@@ -50,8 +50,8 @@ def downloadPictures(imageList):
 
         if "http" in i:
             continue
-#Changed HTTP1.1 to 1.0 as its a non persistent connection
-        request = "GET /" + i + " HTTP/1.0\r\nHost:173.230.149.18:23662\r\nX-Client-project: project-152A-part2\r\nConnection: close\r\n\r\n"
+
+        request = "GET /" + i + " HTTP/1.1\r\nHost:173.230.149.18:23662\r\nX-Client-project: project-152A-part2\r\nConnection: close\r\n\r\n"
         photoName = (i.split("/"))[1]
         f = open("./images/"+photoName, "wb")
         file_size = os.path.getsize('./images/'+photoName)

@@ -1,3 +1,4 @@
+from asyncore import write
 from http import server
 from pickle import FALSE
 from socket import *
@@ -7,7 +8,7 @@ from bs4 import BeautifulSoup
 from pathlib import Path
 import os
 import time
-import re
+import regex as re
 
 f = open("ecs152a.html", "a")
 def retrieveHTML(server_name,server_port, file_size, clientSocket, request):
@@ -45,9 +46,8 @@ def parseHTML():
 
 def downloadPictures(imageList):
     current_directory = os.getcwd()
-    # print(current_directory)
     final_directory = os.path.join(current_directory, r'images')
-    # print(final_directory)
+    
     if not os.path.exists(final_directory):
         os.makedirs(final_directory)
         print("Made a directory")
@@ -58,6 +58,7 @@ def downloadPictures(imageList):
             continue
         
         photoName = (imagePath.split("/"))[1]
+        print("Downloading: ",photoName)
         f = open(imagePath,"wb")
 
         request = "GET /" + imagePath + " HTTP/1.1\r\nHost:173.230.149.18:23662\r\nX-Client-project: project-152A-part2\r\nConnection: keep-alive\r\n\r\n"
@@ -65,34 +66,36 @@ def downloadPictures(imageList):
         clientSocket.send(request.encode('utf-8'))# Initial request for content length
         totalResponse = b''
         response = clientSocket.recv(4096)
-
-        fileSize = 0
+        content = response.split(b"\r\n\r\n")
+        totalResponse+= content[1]
+        fileSize = len(totalResponse)
         match = re.search(b'Content-length: [0-9]+',response)
-        # print("Matched string: ",match.group())
         if match:
-            # print("Header, size calculated")
             ans = re.split(b': ',match.group())
             targetFileSize = int(ans[1])
-            # print("On splitting: ",targetFileSize)
+            print("Found file size")
 
         while fileSize < targetFileSize:
             response = clientSocket.recv(4096)
-            f.write(response)
+            
             totalResponse += response
             # fileSize = os.path.getsize(os.path.join(current_directory,photoName))
             fileSize = len(totalResponse)
             if(fileSize >= targetFileSize):
                 break
             # print("Image Size for {} is {}".format(photoName, fileSize))
-        break
-    
+        
+        # matches = totalResponse.split(b"\r\n\r\n")
+        # writeToFile = matches[1]
+        # print("This is the answer:{}".format(writeToFile))
+
+        f.write(totalResponse)
         f.close()
 
         # print("This is i: ", i)
-        # print("This is the request: \n", request)
-        # print("This is the response: ", response)
+        # print("This is the totalResponse: \n", totalResponse)
+        # print("This is the response: \n", response)
         print("Image: ",photoName," downloaded")
-    
     clientSocket.close()
 
 

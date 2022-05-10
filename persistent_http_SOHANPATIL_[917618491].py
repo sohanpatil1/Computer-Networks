@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 from pathlib import Path
 import os
 import time
-from datetime import datetime
+from datetime import date, datetime
 import regex as re
 import urllib.parse as urlparse
 
@@ -33,16 +33,16 @@ def retrieveHTML(server_name,server_port, file_size, clientSocket, request):
         totalResponse += response.decode('utf-8')
 
         percentageRecieved = file_size/targetFileSize * 100
-        print("received %: ",round(percentageRecieved))
+        # print("received %: ",round(percentageRecieved))
         file_size = len(totalResponse)
         if(file_size >= targetFileSize):
             break
                 
     f.write(totalResponse)
     percentageRecieved = file_size/targetFileSize * 100
-    print("received %: ",round(percentageRecieved))
+    # print("received %: ",round(percentageRecieved))
     
-    print("The file size is : {}".format(file_size))
+    # print("The file size is : {}".format(file_size))
     f.close()
 
 
@@ -55,35 +55,35 @@ def parseHTML():
             imageList.append(img.get('src'))
     return imageList
 
-def downloadPictures(imageList):
+def downloadPictures(ardSum, imageList):
     current_directory = os.getcwd()
     final_directory = os.path.join(current_directory, r'images')
     
     if not os.path.exists(final_directory):
         os.makedirs(final_directory)
-    atfPLT = datetime.now()
-    time.sleep(2)
+    
+    
     rpsStart = datetime.now()
+
     for imagePath in imageList:
         
+
         totalResponse = b''
 
         if "http://" in imagePath:
-            print(imagePath)
             path = urlparse.urlparse(imagePath)
             urlName = path.scheme+"://"+ path.netloc
             imageName = path.path.split("/")
             # print("This is the image name", imageName[len(imageName)-1])
-            f = open(imageName[len(imageName)-1],"wb")
+            f = open("./images/"+imageName[len(imageName)-1],"wb")
 
+            ardStart = datetime.now()
             imageSocket = socket(AF_INET, SOCK_STREAM)
             imageSocket.connect((path.netloc, 80))
             targetFileSize = 0
             request = "GET "+ path.path + " HTTP/1.1\r\nHost:"+ path.netloc+ "\r\nConnection: keep-alive\r\n\r\n"
-            print("Request: ",request)
             imageSocket.send(request.encode('utf-8'))# Initial request for content length
             response = imageSocket.recv(4096)
-            # print(response)
             content = response.split(b"\r\n\r\n")
             totalResponse+= content[1]
             fileSize = len(totalResponse)
@@ -91,8 +91,6 @@ def downloadPictures(imageList):
             if match:
                 ans = re.split(b': ',match.group())
                 targetFileSize = int(ans[1])
-            # print(content[0])
-            print("Target File size: ",targetFileSize)
             while fileSize < targetFileSize:
                 response = imageSocket.recv(4096)
                 # print(response)
@@ -101,21 +99,25 @@ def downloadPictures(imageList):
                 fileSize = len(totalResponse)
                 if(fileSize >= targetFileSize):
                     break
+            ardEnd = datetime.now()
+            ardSum += (ardEnd - ardStart).seconds
             # print(content[0])
             # print(totalResponse)
             f.write(totalResponse)
             f.close()
+            if("allIndoors.jpg" in imagePath):
+                atfPLT = datetime.now()
             imageSocket.close()
             continue
 
         
         photoName = (imagePath.split("/"))[1]
-        print("Downloading: ",photoName)
         f = open(imagePath,"wb")
 
         request = "GET /" + imagePath + " HTTP/1.1\r\nHost:173.230.149.18:23662\r\nX-Client-project: project-152A-part2\r\nConnection: keep-alive\r\n\r\n"
         
         clientSocket.send(request.encode('utf-8'))# Initial request for content length
+        ardStart = datetime.now()
         response = clientSocket.recv(4096)
         content = response.split(b"\r\n\r\n")
         totalResponse+= content[1]
@@ -133,21 +135,24 @@ def downloadPictures(imageList):
             fileSize = len(totalResponse)
             if(fileSize >= targetFileSize):
                 break
-
+        ardEnd = datetime.now()
+        ardSum += (ardEnd - ardStart).seconds
         f.write(totalResponse)
         f.close()
+        if("allIindoors.jpg" in imagePath):
+            atfPLT = datetime.now()
     rpsEnd = datetime.now()
     clientSocket.close()
-    return rpsEnd-rpsStart, atfPLT
+    return rpsEnd-rpsStart, atfPLT, ardSum
 
-def output(PLT, atfPLT,rps):
+def output(PLT, atfPLT,rps,ard):
     size = os.get_terminal_size()
     print(size[0] * '*')
-    print("HTTP Client Version: Persistent HTTP")
-    print("Total PLT = {}".format(PLT.total_seconds()))
-    print("Average Request Delay = {}".format("SOhan"))
-    print("ATF PLT = {}".format(atfPLT.total_seconds()))
-    print("RPS = {}".format(rps.total_seconds()))
+    print("\nHTTP Client Version: Persistent HTTP\n")
+    print("Total PLT = {}\n".format(PLT.total_seconds()))
+    print("Average Request Delay = {}\n".format(ard))
+    print("ATF PLT = {}\n".format(atfPLT.total_seconds()))
+    print("RPS = {}".format(rps))
     print(size[0] * '*')
     pass
 
@@ -156,7 +161,7 @@ def output(PLT, atfPLT,rps):
 server_name = "173.230.149.18"
 server_port = 23662
 file_size = 0
-totalDelayTime = 0
+ardSum = 0
 
 clientSocket = socket(AF_INET, SOCK_STREAM)
 clientSocket.connect((server_name, server_port))
@@ -168,9 +173,9 @@ request = "GET /ecs152a.html HTTP/1.1\r\nHost:173.230.149.18:23662\r\nX-Client-p
 startTime = datetime.now()
 retrieveHTML(server_name,server_port, file_size, clientSocket, request)
 imageList = parseHTML()
-print("Images gathered : ",len(imageList))
-rps,atfPLT = downloadPictures(imageList)
+# print("Images gathered : ",len(imageList))
+rps,atfPLT, ardSum = downloadPictures(ardSum, imageList)
 pltEnd = datetime.now()
 PLT = pltEnd - startTime
 atfPLT = atfPLT - startTime
-output(PLT, atfPLT, rps)
+output(PLT, atfPLT, len(imageList)/int(rps.seconds), ardSum/len(imageList))
